@@ -1,0 +1,52 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+title Диаграмма контейнеров (C4 L2) — ИС учёта и анализа результатов промежуточной аттестации
+
+Person(teacher, "Преподаватель", "Вносит оценки по своим дисциплинам, работает с ведомостями")
+Person(curator, "Куратор", "Просматривает успеваемость группы, группы риска и динамику")
+Person(dean, "Диспетчер деканата", "Управляет справочниками, настраивает правила, формирует отчёты")
+Person(student, "Студент", "Просматривает свои оценки, рейтинг и уведомления")
+
+System_Ext(notification_gateway, "Внешний шлюз уведомлений", "SMTP-сервер и Telegram Bot API. Физическая доставка сообщений получателям")
+System_Ext(university_1c, "1С:Университет", "Внешняя система учёта контингента студентов и учебных планов")
+System_Ext(iam, "SSO/IAM", "Внешняя система аутентификации и авторизации пользователей")
+System_Ext(lms, "LMS (Moodle)", "Внешняя образовательная платформа: курсы, задания, часть оценок")
+
+System_Boundary(assessment_system, "ИС учёта и анализа результатов промежуточной аттестации") {
+
+    Container(mobile_app, "Мобильное приложение студента", "React Native / TypeScript", "Просмотр оценок, личного рейтинга и уведомлений")
+
+    Container(web_app, "Веб-приложение", "React / TypeScript", "Интерфейс преподавателя, куратора и деканата: ввод оценок, отчёты, настройка правил")
+
+    Container(api_gateway, "API Gateway & Backend", "Python / FastAPI", "Маршрутизация запросов, бизнес-логика, проверка прав доступа")
+
+    Container(analytics_service, "Сервис аналитики и рейтинга", "Python / Pandas / Celery", "Расчёт рейтинга студентов, выявление групп риска, формирование отчётов")
+
+    Container(notification_service, "Сервис подготовки уведомлений", "Python / Celery / Redis", "Формирует очередь уведомлений и передаёт их во внешний шлюз доставки")
+
+    ContainerDb(database, "Реляционная БД", "PostgreSQL 16", "Хранение оценок, студентов, дисциплин, ведомостей, рейтингов и уведомлений")
+}
+
+Rel(student, mobile_app, "Использует", "HTTPS")
+Rel(teacher, web_app, "Использует", "HTTPS")
+Rel(curator, web_app, "Использует", "HTTPS")
+Rel(dean, web_app, "Использует", "HTTPS")
+
+Rel(mobile_app, api_gateway, "Запросы на просмотр оценок и рейтинга", "HTTPS/JSON")
+Rel(web_app, api_gateway, "Ввод оценок, запросы отчётов и аналитики", "HTTPS/JSON")
+
+Rel(api_gateway, database, "Чтение и запись данных", "SQL/TCP 5432")
+Rel(api_gateway, analytics_service, "Запуск расчёта рейтинга и выявления рисков", "gRPC/HTTP2")
+Rel(api_gateway, notification_service, "Запуск формирования уведомлений", "gRPC/HTTP2")
+
+Rel(analytics_service, database, "Чтение данных для анализа успеваемости", "SQL/TCP 5432")
+Rel(notification_service, database, "Чтение данных о получателях уведомлений", "SQL/TCP 5432")
+
+Rel(api_gateway, university_1c, "Синхронизация контингента и учебных планов", "REST/HTTPS")
+Rel(api_gateway, iam, "Проверка токена и прав доступа", "OAuth2/HTTPS")
+Rel(api_gateway, lms, "Импорт оценок и учебных материалов", "REST/HTTPS")
+
+Rel(notification_service, notification_gateway, "Отправка Email и Telegram-сообщений", "SMTP/HTTPS API")
+@enduml
