@@ -1,0 +1,42 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+title Диаграмма компонентов (C4 L3) — контейнер "Сервис аналитики и рейтинга" ИС учёта и анализа результатов промежуточной аттестации
+
+Container_Boundary(analytics, "Сервис аналитики и рейтинга (Python / Pandas / Celery)") {
+
+    Component(grpc_handler, "Обработчик заданий (gRPC)", "grpcio / Pydantic", "Принимает задания от API Gateway, валидирует параметры, ставит задачу в очередь Celery и возвращает task_id; отдаёт готовые результаты")
+
+    Component(task_dispatcher, "Планировщик заданий", "Celery Client", "Формирует и публикует задачи в очередь Celery, управляет ретраями и таймаутами на стороне клиента")
+
+    Component(rating_calc, "Калькулятор рейтинга", "Python / Pandas / NumPy", "Расчёт рейтинга студентов по дисциплинам и периодам аттестации")
+
+    Component(risk_detector, "Детектор групп риска", "Python / Pandas", "Выявление студентов с задолженностями и формирование списков группы риска")
+
+    Component(report_builder, "Построитель отчётов", "Python / Pandas / Jinja2", "Формирование аналитических отчётов по успеваемости групп и потоков")
+
+    Component(analytics_repo, "Репозиторий аналитических данных", "SQLAlchemy / asyncpg", "Чтение оценок и справочников, запись результатов расчётов")
+}
+ 
+ContainerDb(database, "Реляционная БД", "PostgreSQL 16", "Оценки, студенты, дисциплины, ведомости, рейтинги")
+Container(api_gateway, "API Gateway & Backend", "Python / FastAPI", "Инициирует задачи расчёта, забирает результаты")
+Container(notification_service, "Сервис подготовки уведомлений", "Python / Celery / Redis", "Очередь и подготовка уведомлений")
+
+Rel(api_gateway, grpc_handler, "Запуск задач расчёта рейтинга и отчётов", "gRPC/HTTP2")
+
+Rel(grpc_handler, task_dispatcher, "Постановка задачи в очередь Celery", "in-process")
+
+Rel(task_dispatcher, rating_calc, "Вызов расчёта рейтинга", "in-process")
+Rel(task_dispatcher, risk_detector, "Вызов выявления группы риска", "in-process")
+Rel(task_dispatcher, report_builder, "Вызов построения отчёта", "in-process")
+
+Rel(rating_calc, analytics_repo, "Чтение оценок, запись рейтингов", "in-process")
+Rel(risk_detector, analytics_repo, "Чтение оценок, запись списков риска", "in-process")
+Rel(report_builder, analytics_repo, "Чтение агрегатов, запись отчётов", "in-process")
+
+Rel(analytics_repo, database, "SQL-запросы и транзакции", "SQL/TCP 5432")
+
+Rel(risk_detector, notification_service, "Передача списков группы риска", "gRPC/HTTP2")
+
+@enduml
