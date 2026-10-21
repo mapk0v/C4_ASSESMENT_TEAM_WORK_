@@ -1,0 +1,129 @@
+@startuml
+skinparam classAttributeIconSize 0
+skinparam monochrome true
+title Диаграмма классов (UML L4) — компонент "Сервис рейтинга и групп риска" (rating_svc)
+
+package "domain.models" {
+
+    class Student {
+        - _id: str
+        - _full_name: str
+        - _group_id: str
+        + id() : str
+        + full_name() : str
+        + group_id() : str
+    }
+
+    class Grade {
+        - _student_id: str
+        - _discipline_id: str
+        - _value: int
+        - _control_type: ControlType
+        + student_id() : str
+        + discipline_id() : str
+        + value() : int
+        + control_type() : ControlType
+    }
+
+    enum ControlType {
+        EXAM
+        CREDIT
+        COURSEWORK
+    }
+
+    class AssessmentResult {
+        - _student_id: str
+        - _period: str
+        - _avg_grade: float
+        - _debt_count: int
+        - _is_at_risk: bool
+        - _risk_reason: str
+        + student_id() : str
+        + period() : str
+        + avg_grade() : float
+        + debt_count() : int
+        + is_at_risk() : bool
+        + risk_reason() : str
+    }
+}
+
+package "domain.strategies.rating" {
+
+    interface RatingStrategy {
+        + calculate(grades: list[Grade]) : float
+    }
+
+    class SimpleAverageStrategy {
+        + calculate(grades: list[Grade]) : float
+    }
+
+    class WeightedGradeStrategy {
+        - _weights: dict[ControlType, float]
+        + __init__(exam_weight: float, credit_weight: float, coursework_weight: float)
+        + calculate(grades: list[Grade]) : float
+    }
+
+    class GpaStrategy {
+        - _mapping: dict[int, float]
+        + calculate(grades: list[Grade]) : float
+    }
+}
+
+package "domain.strategies.risk" {
+
+    interface RiskDetectionStrategy {
+        + is_at_risk(grades: list[Grade]) : bool
+        + get_risk_reason(grades: list[Grade]) : str
+        + get_debt_count(grades: list[Grade]) : int
+    }
+
+    class DebtCountStrategy {
+        - _max_debts: int
+        + __init__(max_debts: int)
+        + is_at_risk(grades: list[Grade]) : bool
+        + get_risk_reason(grades: list[Grade]) : str
+        + get_debt_count(grades: list[Grade]) : int
+    }
+
+    class LowGradeStrategy {
+        - _avg_threshold: float
+        + __init__(avg_threshold: float)
+        + is_at_risk(grades: list[Grade]) : bool
+        + get_risk_reason(grades: list[Grade]) : str
+        + get_debt_count(grades: list[Grade]) : int
+    }
+}
+
+package "domain.services" {
+
+    class RatingService {
+        - _rating_strategy: RatingStrategy
+        - _risk_strategy: RiskDetectionStrategy
+        + __init__(rating_strategy: RatingStrategy, risk_strategy: RiskDetectionStrategy)
+        + set_rating_strategy(strategy: RatingStrategy) : None
+        + set_risk_strategy(strategy: RiskDetectionStrategy) : None
+        + calculate_rating(grades: list[Grade]) : float
+        + evaluate_risk(grades: list[Grade]) : bool
+        + build_assessment_result(student: Student, period: str, grades: list[Grade]) : AssessmentResult
+    }
+}
+
+' === Связи между классами (одинарные, без дублей) ===
+
+' Агрегация: RatingService содержит ссылки на стратегии
+RatingService o--> RatingStrategy : uses
+RatingService o--> RiskDetectionStrategy : uses
+
+' Реализация интерфейсов конкретными стратегиями
+RatingStrategy <|.. SimpleAverageStrategy
+RatingStrategy <|.. WeightedGradeStrategy
+RatingStrategy <|.. GpaStrategy
+RiskDetectionStrategy <|.. DebtCountStrategy
+RiskDetectionStrategy <|.. LowGradeStrategy
+
+' Зависимости предметной области
+Grade --> ControlType
+RatingService --> AssessmentResult
+AssessmentResult --> Student
+Grade --> Student
+@enduml
