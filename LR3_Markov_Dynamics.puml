@@ -1,0 +1,26 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+title Динамическая диаграмма (C4) — Запрос рейтинга группы куратором
+
+Container(web_app, "Веб-приложение", "React / TypeScript", "Интерфейс куратора")
+Container_Boundary(api, "API Gateway & Backend (Python / FastAPI)") {
+    Component(web_router, "Веб-роутер (REST API)", "FastAPI APIRouter", "")
+    Component(auth_mw, "Компонент аутентификации", "FastAPI Middleware", "")
+    Component(rating_svc, "Сервис рейтинга и групп риска", "Python / Domain Service", "")
+    Component(repo, "Репозитории доступа к данным", "SQLAlchemy / asyncpg", "")
+}
+ContainerDb(database, "Реляционная БД", "PostgreSQL 16", "Оценки, студенты, рейтинги")
+System_Ext(iam, "SSO/IAM", "Внешняя система аутентификации")
+
+Rel(web_app, web_router, "1. GET /api/v1/rating/group/{id}", "HTTPS/JSON")
+Rel(web_router, auth_mw, "2. Проверить права (in-process)", "Python Call")
+Rel(auth_mw, iam, "3. Валидировать JWT-токен", "OAuth2/HTTPS")
+Rel(web_router, rating_svc, "4. calculate_rating(group_id)", "in-process")
+Rel(rating_svc, repo, "5. get_grades_by_group(group_id)", "in-process")
+Rel(repo, database, "6. SELECT оценки и ведомости", "SQL/TCP 5432")
+Rel(rating_svc, web_router, "7. Вернуть RatingDTO", "in-process")
+Rel(web_router, web_app, "8. HTTP 200 OK (JSON)", "HTTPS/JSON")
+
+@enduml
