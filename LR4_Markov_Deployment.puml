@@ -9,26 +9,28 @@ Deployment_Node(client, "Клиентское устройство", "Брауз
 }
 
 Deployment_Node(cloud, "Облачная инфраструктура (ЦОД)", "Yandex Cloud / AWS") {
+    
     Deployment_Node(nginx_node, "Сервер веб-сервисов", "Ubuntu Linux VM (публичный IP)") {
-        Container(nginx, "Reverse Proxy", "Nginx", "SSL-терминация, балансировка")
+        Container(nginx, "Reverse Proxy & Load Balancer", "Nginx", "SSL-терминация, балансировка нагрузки между экземплярами бэкенда")
     }
     
-    Deployment_Node(app_node, "Сервер приложений", "Ubuntu Linux (Docker Host)") {
-        Container(backend, "API Gateway & Backend", "Python / FastAPI", "Бизнес-логика (Docker-контейнер)")
+    Deployment_Node(app_node_1, "Сервер приложений #1", "Ubuntu Linux (Docker Host)") {
+        Container(backend_1, "API Gateway (Экземпляр 1)", "Python / FastAPI", "Бизнес-логика (Docker-контейнер)")
+    }
+
+    Deployment_Node(app_node_2, "Сервер приложений #2", "Ubuntu Linux (Docker Host)") {
+        Container(backend_2, "API Gateway (Экземпляр 2)", "Python / FastAPI", "Бизнес-логика (Docker-контейнер)")
     }
     
-    Deployment_Node(db_node, "Сервер БД (Мастер)", "Managed PostgreSQL VM") {
+    Deployment_Node(db_node, "Сервер БД", "Managed PostgreSQL VM") {
         ContainerDb(db_master, "Центральная БД", "PostgreSQL 16", "Основные данные (запись/чтение)")
-    }
-    
-    Deployment_Node(db_replica_node, "Сервер БД (Реплика)", "Managed PostgreSQL VM") {
-        ContainerDb(db_replica, "Реплика БД", "PostgreSQL 16", "Горячий резерв, чтение")
     }
 }
 
 Rel(client, nginx, "Запросы к API", "HTTPS / TLS 1.3, порт 443")
-Rel(nginx, backend, "Проксирование запросов", "HTTP / JSON, порт 8000")
-Rel(backend, db_master, "Запись и чтение", "SQL / TCP, порт 5432")
-Rel(db_master, db_replica, "Потоковая репликация (WAL)", "WAL / TCP, порт 5432")
+Rel(nginx, backend_1, "Балансировка нагрузки (50%)", "HTTP / JSON, порт 8000")
+Rel(nginx, backend_2, "Балансировка нагрузки (50%)", "HTTP / JSON, порт 8000")
+Rel(backend_1, db_master, "Запись и чтение", "SQL / TCP, порт 5432")
+Rel(backend_2, db_master, "Запись и чтение", "SQL / TCP, порт 5432")
 
 @enduml
