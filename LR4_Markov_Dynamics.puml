@@ -15,12 +15,10 @@ ContainerDb(database, "Реляционная БД", "PostgreSQL 16", "Оцен�
 System_Ext(iam, "SSO/IAM", "Внешняя система аутентификации")
 
 Rel(web_app, web_router, "1. GET /api/v1/rating/group/{id}", "HTTPS/JSON")
-Rel(web_router, auth_mw, "2. Проверить права (in-process)", "Python Call")
+Rel(web_router, auth_mw, "2. Проверить права", "Python Call")
 Rel(auth_mw, iam, "3. Валидировать JWT-токен", "OAuth2/HTTPS")
-Rel(web_router, rating_svc, "4. calculate_rating(group_id)", "in-process")
-Rel(rating_svc, repo, "5. get_grades_by_group(group_id)", "in-process")
+Rel(web_router, rating_svc, "4. calculate_rating(group_id)", "Python Call")
+Rel(rating_svc, repo, "5. get_grades_by_group(group_id)", "Python Call")
 Rel(repo, database, "6. SELECT оценки и ведомости", "SQL/TCP 5432")
-Rel(rating_svc, web_router, "7. Вернуть RatingDTO", "in-process")
-Rel(web_router, web_app, "8. HTTP 200 OK (JSON)", "HTTPS/JSON")
 
 @enduml
