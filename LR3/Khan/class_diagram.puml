@@ -1,0 +1,86 @@
+@startuml
+' ЛР3, C4 Level 4 / UML Class Diagram: детализация L3-компонента rating_calc
+skinparam classAttributeIconSize 0
+left to right direction
+title ЛР №3 — Analytics / rating_calc — UML классов (L4)
+
+package "rating_calc (компонент Analytics)" {
+  class RatingCalculator {
+    - _strategy: RatingStrategy
+    + __init__(strategy: RatingStrategy): None
+    + set_strategy(strategy: RatingStrategy): None
+    + calculate_rating(student: Student, academic_year: str, module: ModuleNumber, grades: Sequence~ModuleGrade~): RatingSummary
+  }
+  abstract class RatingStrategy <<interface>> {
+    + calculate(grades: Sequence~ModuleGrade~): Decimal
+  }
+  class AverageStrategy {
+    + calculate(grades: Sequence~ModuleGrade~): Decimal
+  }
+  class MedianStrategy {
+    + calculate(grades: Sequence~ModuleGrade~): Decimal
+  }
+  class MinimumStrategy {
+    + calculate(grades: Sequence~ModuleGrade~): Decimal
+  }
+  class Student <<dataclass>> {
+    + student_id: str
+    + full_name: str
+  }
+  class Discipline <<dataclass>> {
+    + code: str
+    + name: str
+  }
+  class ModuleGrade <<dataclass>> {
+    + student_id: str
+    + discipline_code: str
+    + academic_year: str
+    + module: ModuleNumber
+    + mark: int
+    + category: GradeCategory
+    + not_passed: bool
+  }
+  class RatingSummary <<dataclass>> {
+    + student_id: str
+    + academic_year: str
+    + module: ModuleNumber
+    + strategy: str
+    + score: Decimal
+    + graded_count: int
+    + not_passed_count: int
+  }
+  enum ModuleNumber {
+    FIRST = 1
+    SECOND = 2
+  }
+  enum GradeCategory {
+    EXCELLENT
+    GOOD
+    SATISFACTORY
+    FAILED
+  }
+}
+RatingCalculator o--> "1" RatingStrategy : использует
+RatingStrategy <|.. AverageStrategy
+RatingStrategy <|.. MedianStrategy
+RatingStrategy <|.. MinimumStrategy
+RatingCalculator ..> Student : принимает
+RatingCalculator ..> ModuleGrade : анализирует
+RatingCalculator ..> RatingSummary : возвращает
+ModuleGrade --> ModuleNumber : принадлежит
+ModuleGrade ..> GradeCategory : категория
+RatingSummary --> ModuleNumber
+note bottom of RatingCalculator
+  Один вызов = один студент + один учебный год + один модуль.
+  Баллы разных модулей не смешиваются.
+end note
+note right of RatingStrategy
+  Среднее / медиана / минимум — альтернативные
+  аналитические показатели для демонстрации Strategy.
+  Они НЕ являются официальным вузовским рейтингом.
+end note
+note bottom of ModuleGrade
+  45..54 — отлично; 35..44 — хорошо;
+  25..34 — удовлетворительно; 0..24 — не сдал.
+end note
+@enduml

@@ -1,0 +1,103 @@
+@startuml
+' ЛР3, C4 Level 4 / UML Class Diagram: компонент message_builder (notification_service)
+skinparam classAttributeIconSize 0
+left to right direction
+skinparam nodesep 15
+skinparam ranksep 40
+title ЛР №3 — Notification Service / message_builder — UML классов (L4)
+
+package "message_builder (компонент сервиса уведомлений)" {
+  class MessageBuilder {
+    - _templates: TemplateProvider
+    - _formatter: ChannelFormatter
+    + __init__(templates: TemplateProvider, formatter: ChannelFormatter): None
+    + set_formatter(formatter: ChannelFormatter): None
+    + build(event: NotificationEvent, recipient: Recipient): Message
+  }
+  interface ChannelFormatter <<Strategy>> {
+    + channel: Channel {readOnly}
+    + format(text: str, event: NotificationEvent, recipient: Recipient): Message
+  }
+  class EmailFormatter {
+    + format(text: str, event: NotificationEvent, recipient: Recipient): Message
+  }
+  class TelegramFormatter {
+    + MAX_LENGTH: int = 4096
+    - _escape(text: str): str
+    - _fit(text: str, limit: int | None): str
+    + format(text: str, event: NotificationEvent, recipient: Recipient): Message
+  }
+  class SmsFormatter {
+    + MAX_LENGTH: int = 160
+    + format(text: str, event: NotificationEvent, recipient: Recipient): Message
+  }
+  interface TemplateProvider {
+    + render(event_type: EventType, context: Mapping[str, str]): str
+  }
+  class Jinja2TemplateProvider {
+    - _env: Environment
+    + render(event_type: EventType, context: Mapping[str, str]): str
+  }
+  class NotificationEvent <<dataclass>> {
+    + event_type: EventType
+    + student_name: str
+    + module: str
+    + discipline: str
+    + payload: Mapping[str, str]
+    + __post_init__(): None
+  }
+  class Recipient <<dataclass>> {
+    + recipient_id: str
+    + name: str
+    + channel: Channel
+    + address: str
+  }
+  class Message <<dataclass>> {
+    + channel: Channel
+    + to: str
+    + body: str
+    + subject: str | None
+    + html_body: str | None
+    + parse_mode: str | None
+  }
+  enum Channel {
+    EMAIL
+    TELEGRAM
+    SMS
+  }
+  enum EventType {
+    NEW_GRADE
+    RISK_GROUP
+    RATING_CHANGED
+  }
+  class ChannelMismatchError <<exception>>
+  class TemplateError <<exception>>
+}
+
+MessageBuilder o--> "1" ChannelFormatter : _formatter (стратегия)
+MessageBuilder o--> "1" TemplateProvider : _templates
+ChannelFormatter <|.. EmailFormatter
+ChannelFormatter <|.. TelegramFormatter
+ChannelFormatter <|.. SmsFormatter
+TemplateProvider <|.. Jinja2TemplateProvider
+MessageBuilder ..> NotificationEvent : принимает
+MessageBuilder ..> Recipient : принимает
+MessageBuilder ..> Message : возвращает
+MessageBuilder ..> ChannelMismatchError : выбрасывает
+Jinja2TemplateProvider ..> TemplateError : выбрасывает
+NotificationEvent --> EventType
+Recipient --> Channel
+Message --> Channel
+ChannelFormatter ..> Channel
+
+note bottom of MessageBuilder
+  Один вызов build() = одно событие + один получатель.
+  Новый канал = новый класс-стратегия, MessageBuilder не меняется (OCP).
+  Модуль обязателен, баллы NEW_GRADE — целые 0..54.
+end note
+note right of ChannelFormatter
+  Подмена алгоритма форматирования:
+  Email / Telegram; SMS — пример расширения ЛР3,
+  не включён в продуктивное развёртывание ЛР4.
+end note
+@enduml

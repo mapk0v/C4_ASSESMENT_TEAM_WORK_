@@ -1,0 +1,47 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Deployment.puml
+LAYOUT_WITH_LEGEND()
+title Deployment L2 — предлагаемая инфраструктура ИС аттестации
+
+Deployment_Node(student_device, "Устройство студента", "Android / iOS") {
+  Container(mobile_app, "Мобильное приложение", "React Native", "Клиентский интерфейс")
+}
+
+Deployment_Node(university_dc, "Частная инфраструктура университета (проект)", "Виртуальные машины / приватные подсети") {
+  Deployment_Node(front_host, "Публичный веб-узел", "Linux VM / DMZ") {
+    Container(nginx, "Reverse Proxy и веб-интерфейс", "Nginx / React", "Точка входа HTTPS и выдача Web SPA")
+  }
+  Deployment_Node(app_host, "Приватный сервер приложений", "Linux VM / Docker Host") {
+    Container(api_gateway, "API Gateway & Backend", "FastAPI / Python", "HTTP API и координация")
+    Container(analytics_service, "Сервис аналитики и рейтинга", "Python / grpcio / Pandas", "Вызывает компонент rating_calc")
+    Container(notification_service, "Сервис подготовки уведомлений", "Python / grpcio / Jinja2", "Формирование и отправка сообщений")
+  }
+  Deployment_Node(db_host, "Приватный сервер БД", "Linux VM / PostgreSQL") {
+    ContainerDb(database, "Основная реляционная БД", "PostgreSQL 16", "Оценки, рейтинги, уведомления")
+  }
+  Deployment_Node(db_standby_host, "Резервный сервер БД (план)", "Linux VM / PostgreSQL") {
+    ContainerDb(database_replica, "Реплика PostgreSQL", "PostgreSQL 16", "Резервирование, только чтение")
+  }
+}
+
+Rel(mobile_app, nginx, "Запросы по внешней сети", "HTTPS/TLS, TCP 443")
+Rel(nginx, api_gateway, "Проксирование запросов (приватная сеть)", "HTTP, TCP 8000")
+Rel(api_gateway, analytics_service, "Запуск расчетов рейтинга", "gRPC/HTTP2, TCP 50051, mTLS")
+Rel(api_gateway, notification_service, "События задолженностей", "gRPC/HTTP2, TCP 50052, mTLS")
+Rel(analytics_service, notification_service, "События группы риска", "gRPC/HTTP2, TCP 50052, mTLS")
+Rel(api_gateway, database, "Доступ к учетным данным", "PostgreSQL/TLS, TCP 5432")
+Rel(analytics_service, database, "Читает оценки; пишет аналитические результаты", "PostgreSQL/TLS, TCP 5432")
+Rel(notification_service, database, "Читает получателей; пишет статусы", "PostgreSQL/TLS, TCP 5432")
+Rel(database, database_replica, "ПЛАН: потоковая репликация WAL", "TCP 5432, приватная сеть")
+
+note right of analytics_service
+  gRPC 50051 — проектный порт;
+  извне закрыт. Расчет выполняет
+  rating_calc внутри этого контейнера.
+end note
+note right of database_replica
+  Отказоустойчивость как проектное
+  предложение, не развернута и
+  не добавляет новый бизнес-контейнер L2.
+end note
+@enduml

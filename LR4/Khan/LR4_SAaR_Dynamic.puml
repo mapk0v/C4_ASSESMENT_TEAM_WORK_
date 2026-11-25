@@ -1,0 +1,35 @@
+@startuml
+!include <C4/C4_Component>
+
+LAYOUT_WITH_LEGEND()
+title ЛР4 — Dynamic: запуск расчёта рейтинга группы за модуль 1
+
+' Участник "Студент" не нужен: сценарий инициирует куратор через web_app.
+' Сохранены имена компонентов индивидуальной ЛР2 SAaR без analytics_coordinator.
+Container(web_app, "Веб-приложение куратора", "React / TypeScript", "Просмотр рейтинга группы")
+Container(api_gateway, "API Gateway & Backend", "Python / FastAPI", "Авторизация и маршрутизация запросов")
+
+Container_Boundary(analytics, "Сервис аналитики и рейтинга (Python / Pandas / Celery)") {
+    Component(grpc_handler, "Обработчик заданий (gRPC)", "grpcio / Pydantic", "Принимает задания; возвращает task_id и результат")
+    Component(task_dispatcher, "Планировщик заданий", "Celery Client", "Публикует и контролирует фоновые задачи")
+    Component(rating_calc, "Калькулятор рейтинга", "Python / Pandas / Strategy", "Рейтинг группы за выбранный модуль")
+    Component(analytics_repo, "Репозиторий аналитических данных", "SQLAlchemy / asyncpg", "Чтение оценок и сохранение результата")
+}
+
+ContainerDb(database, "Реляционная БД", "PostgreSQL 16", "Оценки по дисциплинам, студентам и модулям")
+
+Rel(web_app, api_gateway, "1. Запрос рейтинга группы за модуль 1", "HTTPS/JSON")
+Rel(api_gateway, grpc_handler, "2. StartRating(group_id, module=1)", "gRPC/HTTP2")
+Rel(grpc_handler, task_dispatcher, "3. Поставить расчёт в очередь", "Python Call / Celery")
+Rel(task_dispatcher, rating_calc, "4. Выполнить задачу рейтинга", "Celery Worker / Python")
+Rel(rating_calc, analytics_repo, "5. Прочитать оценки и записать рейтинг", "Python Call")
+Rel(analytics_repo, database, "6. SELECT оценок / UPSERT результата", "SQL/TCP 5432")
+
+' Подтверждение с task_id, ожидание задачи и возврат результата через Backend
+' сознательно опущены, чтобы показать основной процесс без обратных стрелок.
+
+' Баллы по дисциплине: 0..24 — не сдал; 25..34 — удовлетворительно;
+' 35..44 — хорошо; 45..54 — отлично.
+' Модули 1 и 2 не влияют друг на друга: фильтр module=1 обязателен.
+' Среднее/медиана/минимум — учебные показатели ЛР3, не официальная формула вуза.
+@enduml

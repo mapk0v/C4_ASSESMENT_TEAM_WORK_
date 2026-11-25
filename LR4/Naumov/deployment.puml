@@ -1,0 +1,44 @@
+@startuml
+!define RELATIVE_INCLUDE
+!include ../vendor/C4-PlantUML/C4_Deployment.puml
+
+LAYOUT_TOP_DOWN()
+title C4 Deployment — сервис уведомлений в общей инфраструктуре ИС
+
+Deployment_Node(client, "Устройство пользователя", "Браузер / смартфон") {
+    Container(web_app, "Веб- или мобильное приложение", "React / React Native", "Работа с оценками")
+}
+
+Deployment_Node(dc, "Проектная инфраструктура / ЦОД", "Linux, Docker") {
+    Deployment_Node(edge, "Публичный сервер", "Ubuntu VM") {
+        Container(nginx, "Reverse Proxy", "Nginx", "TLS и маршрутизация")
+    }
+    Deployment_Node(app_hosts, "Приложения", "Docker Host") {
+        Container(backend_1, "Backend #1", "Python / FastAPI", "Экземпляр API")
+        Container(backend_2, "Backend #2", "Python / FastAPI", "Резервируемый экземпляр API")
+        Container(analytics_service, "Analytics", "Python / Celery", "Рейтинг и группы риска")
+    }
+    Deployment_Node(notification_host, "Сервер уведомлений", "Docker Host") {
+        Container(notification_api, "Notification gRPC API", "Python / grpcio", "grpc_handler, router, builder, dispatcher")
+        Container(notification_worker, "Notification Celery Worker", "Python / Celery", "delivery_worker, Email и Telegram senders")
+        ContainerDb(redis, "Брокер уведомлений", "Redis 7", "Очередь и повторные попытки")
+    }
+    Deployment_Node(storage, "Сервер данных", "Managed PostgreSQL") {
+        ContainerDb(database, "Реляционная БД", "PostgreSQL 16", "Получатели, оценки, статусы")
+    }
+}
+
+System_Ext(gateway, "Внешние каналы доставки", "SMTP + Telegram Bot API")
+
+Rel(web_app, nginx, "Запросы пользователя", "HTTPS/TLS 443")
+Rel(nginx, backend_1, "Балансировка", "HTTP 8000")
+Rel(nginx, backend_2, "Балансировка", "HTTP 8000")
+Rel(backend_1, notification_api, "События оценок", "gRPC/HTTP2 50052")
+Rel(backend_2, notification_api, "События оценок", "gRPC/HTTP2 50052")
+Rel(analytics_service, notification_api, "События групп риска и рейтинга", "gRPC/HTTP2 50052")
+Rel(notification_api, database, "Чтение адресатов и дедупликация", "PostgreSQL/TCP 5432")
+Rel(notification_api, redis, "Очередь задач", "Redis/TCP 6379")
+Rel(notification_worker, redis, "Получение задач", "Redis/TCP 6379")
+Rel(notification_worker, database, "Статусы и попытки", "PostgreSQL/TCP 5432")
+Rel(notification_worker, gateway, "Email / Telegram", "SMTP 587 / HTTPS 443")
+@enduml

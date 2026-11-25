@@ -1,0 +1,28 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_WITH_LEGEND()
+title Диаграмма системного контекста (C4 L1) — ИС учёта и анализа результатов промежуточной аттестации
+
+Person(teacher, "Преподаватель", "Вносит оценки по своим дисциплинам, работает с ведомостями")
+Person(curator, "Куратор", "Просматривает успеваемость группы, группы риска, динамику по семестрам")
+Person(dean, "Диспетчер деканата", "Управляет справочниками, настраивает правила, формирует отчёты")
+Person(student, "Студент", "Просматривает свои оценки, рейтинг и уведомления")
+
+System(assessment_system, "ИС учёта и анализа результатов промежуточной аттестации", "Собирает результаты аттестации, строит рейтинг студентов, выявляет группы риска и уведомляет ответственных")
+
+System_Ext(notification, "Сервис уведомлений", "Отправка Email и Telegram-сообщений кураторам, студентам и деканату")
+System_Ext(university_1c, "1С:Университет", "Синхронизация контингента студентов и учебных планов")
+System_Ext(iam, "SSO/IAM", "Внешняя аутентификация и авторизация пользователей")
+System_Ext(lms, "LMS (Moodle)", "Импорт оценок и учебных материалов")
+
+Rel(teacher, assessment_system, "Ввод оценок, работа с ведомостями", "HTTPS/JSON")
+Rel(curator, assessment_system, "Просмотр группы риска и динамики успеваемости", "HTTPS/JSON")
+Rel(dean, assessment_system, "Настройка правил, формирование отчётов, управление справочниками", "HTTPS/JSON")
+Rel(student, assessment_system, "Просмотр своих оценок и рейтинга", "HTTPS/JSON")
+
+Rel(assessment_system, notification, "Отправка уведомлений о группах риска и задолженностях", "SMTP/HTTPS API")
+Rel(assessment_system, university_1c, "Синхронизация контингента и учебных планов", "REST/HTTPS")
+Rel(assessment_system, iam, "Проверка токена и ролей пользователей", "OAuth2/HTTPS")
+Rel(assessment_system, lms, "Импорт оценок и курсов", "REST/HTTPS")
+@enduml

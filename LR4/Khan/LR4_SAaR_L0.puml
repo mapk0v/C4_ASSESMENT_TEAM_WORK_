@@ -1,0 +1,27 @@
+@startuml
+!include <C4/C4_Context>
+
+LAYOUT_WITH_LEGEND()
+title ЛР4 — Системный ландшафт (L0). ИС промежуточной аттестации
+
+' На L0 целевая ИС представлена ОДНОЙ системой, а не отдельным сервисом Analytics.
+' Состав внутри ИС соответствует общей диаграмме контейнеров ЛР1.
+Enterprise_Boundary(stankin, "ИТ-экосистема МГТУ «СТАНКИН»") {
+    System(assessment_system, "ИС учёта и анализа промежуточной аттестации", "Backend, Analytics, Notifications; оценки и аналитика двух независимых модулей")
+    System(university_1c, "1С:Университет", "Контингент студентов и учебные планы")
+    System(iam, "SSO/IAM", "Аутентификация и роли пользователей")
+    System(lms, "LMS Moodle", "Курсы и результаты оценивания")
+}
+
+System_Ext(notification_gateway, "Шлюз Email / Telegram", "Внешняя доставка сообщений")
+System_Ext(finance_scholarship, "Финансовая ИС стипендий (ПЛАН)", "Возможная интеграция для утверждённых итогов аттестации; не реализована")
+
+Rel(assessment_system, university_1c, "Синхронизация контингента и планов", "REST/HTTPS")
+Rel(assessment_system, iam, "Проверка токенов и ролей", "OAuth2/HTTPS")
+Rel(assessment_system, lms, "Импорт оценок и курсов", "REST/HTTPS")
+Rel(assessment_system, notification_gateway, "Доставка подготовленных уведомлений", "SMTP/TLS; HTTPS API")
+Rel(assessment_system, finance_scholarship, "ПЛАН: экспорт утверждённых результатов для стипендий", "REST/HTTPS")
+
+' Финансовая ИС показана только для выполнения требования методички по L0.
+' Ее наличие и контракт следует согласовать с преподавателем и командой.
+@enduml

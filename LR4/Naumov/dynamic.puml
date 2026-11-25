@@ -1,0 +1,32 @@
+@startuml
+!define RELATIVE_INCLUDE
+!include ../vendor/C4-PlantUML/C4_Component.puml
+
+LAYOUT_TOP_DOWN()
+title C4 Dynamic — публикация оценки и Email-уведомление (один сценарий)
+
+Container_Boundary(backend, "API Gateway & Backend") {
+    Component(assessment_svc, "Сервис учёта аттестации", "Python", "Зафиксировал оценку за конкретный модуль")
+}
+
+Container_Boundary(notifications, "Сервис подготовки уведомлений") {
+    Component(grpc_handler, "Обработчик событий", "gRPC", "Входящие события")
+    Component(notification_router, "Маршрутизатор", "Python", "Адресаты и защита от повторов")
+    Component(message_builder, "Формирователь сообщений", "Python / Jinja2", "Текст и Email-формат")
+    Component(delivery_dispatcher, "Диспетчер", "Celery Client", "Публикация задач")
+    Component(delivery_worker, "Исполнитель", "Celery Worker", "Выполнение задачи")
+    Component(email_sender, "Email-отправитель", "aiosmtplib", "SMTP")
+}
+
+ContainerDb(redis, "Очередь уведомлений", "Redis 7", "Брокер Celery")
+System_Ext(gateway, "Внешний шлюз", "SMTP-сервер")
+
+Rel(assessment_svc, grpc_handler, "1. NewGradePublished: модуль и баллы 0–54", "gRPC/HTTP2")
+Rel(grpc_handler, notification_router, "2. Проверка и маршрутизация", "in-process")
+Rel(notification_router, message_builder, "3. Подготовить Email для адресата", "in-process")
+Rel(notification_router, delivery_dispatcher, "4. Запланировать отправку", "in-process")
+Rel(delivery_dispatcher, redis, "5. Поставить задачу", "Redis/TCP 6379")
+Rel(delivery_worker, redis, "6. Получить задачу", "Redis/TCP 6379")
+Rel(delivery_worker, email_sender, "7. Отправить письмо", "in-process")
+Rel(email_sender, gateway, "8. Передать письмо", "SMTP/STARTTLS 587")
+@enduml

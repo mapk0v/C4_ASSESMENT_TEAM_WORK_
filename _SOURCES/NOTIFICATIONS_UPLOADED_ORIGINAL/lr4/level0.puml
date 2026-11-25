@@ -1,0 +1,35 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+LAYOUT_WITH_LEGEND()
+title Диаграмма системного ландшафта (Level 0) — ИС аттестации в ИТ-инфраструктуре МГТУ «СТАНКИН»
+
+Person(teacher, "Преподаватель", "Вносит оценки, работает с ведомостями")
+Person(curator, "Куратор", "Смотрит успеваемость группы и группы риска")
+Person(dean, "Диспетчер деканата", "Справочники, правила, отчёты")
+Person(student, "Студент", "Смотрит оценки, рейтинг, уведомления")
+
+Enterprise_Boundary(univ, "ИТ-инфраструктура университета МГТУ «СТАНКИН»") {
+  System(api_gateway, "API Gateway & Backend", "Бизнес-логика, права доступа, маршрутизация")
+  System(analytics_service, "Сервис аналитики и рейтинга", "Рейтинг и группы риска")
+  System(notification_service, "Сервис подготовки уведомлений", "Очередь, шаблоны, ретраи, статусы доставки")
+  System_Ext(iam, "SSO/IAM", "Аутентификация и роли")
+  System_Ext(university_1c, "1С:Университет", "Контингент и учебные планы")
+}
+
+System_Ext(notification_gateway, "Внешний шлюз уведомлений", "SMTP-сервер и Telegram Bot API")
+System_Ext(lms, "LMS (Moodle)", "Курсы и часть оценок")
+
+Rel(teacher, api_gateway, "Ввод оценок, ведомости", "HTTPS/JSON")
+Rel(curator, api_gateway, "Просмотр аналитики и групп риска", "HTTPS/JSON")
+Rel(dean, api_gateway, "Отчёты, правила, справочники", "HTTPS/JSON")
+Rel(student, api_gateway, "Просмотр своих оценок и рейтинга", "HTTPS/JSON")
+Rel(api_gateway, iam, "Проверка токена и ролей", "OAuth2/HTTPS")
+Rel(api_gateway, university_1c, "Синхронизация контингента и планов", "REST/HTTPS")
+Rel(api_gateway, lms, "Импорт оценок и курсов", "REST/HTTPS")
+Rel(api_gateway, analytics_service, "Запуск расчёта рейтинга и рисков", "gRPC/HTTP2")
+Rel(api_gateway, notification_service, "События для уведомлений", "gRPC/HTTP2")
+Rel(notification_service, notification_gateway, "Отправка Email-писем", "SMTP/TLS")
+Rel(notification_service, notification_gateway, "Отправка Telegram-сообщений", "HTTPS (Bot API)")
+Rel(notification_gateway, student, "Доставка уведомления об оценке", "Email / Telegram")
+Rel(notification_gateway, curator, "Доставка уведомления о группе риска", "Email / Telegram")
+@enduml

@@ -1,0 +1,42 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Deployment.puml
+LAYOUT_WITH_LEGEND()
+title Диаграмма развертывания — сервис подготовки уведомлений в ИС аттестации
+
+Deployment_Node(client, "Устройство пользователя", "Браузер / Смартфон iOS, Android") {
+  Container(clients, "Веб-приложение / Мобильное приложение", "React / React Native", "Интерфейс пользователей")
+}
+
+Deployment_Node(cloud, "Облачная инфраструктура (ЦОД)", "Yandex Cloud / AWS VPC") {
+  Deployment_Node(web_vm, "Сервер веб-сервисов", "Ubuntu Linux VM, публичный IP") {
+    Container(nginx, "Reverse Proxy", "Nginx", "SSL-терминация, маршрутизация")
+  }
+  Deployment_Node(app_vm, "Сервер приложений", "Ubuntu Linux, Docker Host, приватная подсеть") {
+    Container(api_gateway, "API Gateway & Backend", "Python / FastAPI", "Бизнес-логика")
+  }
+  Deployment_Node(notif_vm, "Сервер уведомлений", "Ubuntu Linux, Docker Host, приватная подсеть") {
+    Container(notification_service, "Сервис подготовки уведомлений", "Python / gRPC / Jinja2", "grpc_handler, router, builder, senders")
+    Container(celery_worker, "Celery Worker", "Python / Celery", "Отправка, ретраи, таймауты")
+    ContainerDb(redis, "Брокер очереди", "Redis 7", "Очередь задач отправки")
+  }
+  Deployment_Node(db_master, "Сервер БД (Мастер)", "Managed PostgreSQL VM") {
+    ContainerDb(database, "Центральная БД", "PostgreSQL 16", "Запись и чтение")
+  }
+  Deployment_Node(db_replica, "Сервер БД (Реплика)", "Managed PostgreSQL VM") {
+    ContainerDb(database_replica, "Реплика БД", "PostgreSQL 16", "Горячий резерв, тяжёлые SELECT")
+  }
+}
+
+System_Ext(notification_gateway, "Внешний шлюз уведомлений", "SMTP-сервер и Telegram Bot API")
+
+Rel(clients, nginx, "Запросы к API", "HTTPS / TLS 1.3, порт 443")
+Rel(nginx, api_gateway, "Проксирование запросов", "HTTP/JSON, порт 8000")
+Rel(api_gateway, notification_service, "События для уведомлений", "gRPC/HTTP2, порт 50051")
+Rel(api_gateway, database, "Запись и чтение", "SQL/TCP, порт 5432")
+Rel(notification_service, redis, "Постановка задач в очередь", "Redis protocol / TCP, порт 6379")
+Rel(celery_worker, redis, "Получение задач", "Redis protocol / TCP, порт 6379")
+Rel(celery_worker, database, "Статусы доставки, получатели", "SQL/TCP, порт 5432")
+Rel(celery_worker, notification_gateway, "Отправка Email", "SMTP / STARTTLS, порт 587")
+Rel(celery_worker, notification_gateway, "Отправка Telegram", "HTTPS, порт 443")
+Rel(database, database_replica, "Потоковая репликация", "WAL / TCP, порт 5432")
+@enduml

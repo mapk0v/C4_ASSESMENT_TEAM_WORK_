@@ -1,0 +1,52 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+
+LAYOUT_WITH_LEGEND()
+title Диаграмма компонентов (C4 L3) — контейнер "API Gateway & Backend" ИС учёта и анализа результатов промежуточной аттестации
+
+Container_Boundary(api, "API Gateway & Backend (Python / FastAPI)") {
+
+    Component(auth_mw, "Компонент аутентификации и авторизации", "FastAPI Middleware / python-jose", "Валидация JWT-токена от SSO/IAM, извлечение ролей, проверка прав доступа к эндпоинтам (RBAC)")
+
+    Component(web_router, "Веб-роутер (REST API)", "FastAPI APIRouter", "Приём HTTP/JSON-запросов от веб- и мобильного приложений, валидация DTO (Pydantic), маршрутизация к доменным сервисам")
+
+    Component(assessment_svc, "Сервис учёта аттестации", "Python / Domain Service", "Ведение ведомостей, внесение и корректировка оценок, контроль полноты и корректности данных, фиксация результатов сессии")
+
+    Component(rating_svc, "Сервис рейтинга и групп риска", "Python / Domain Service", "Расчёт рейтинга студентов, применение правил выявления группы риска, формирование аналитических выборок")
+
+    Component(report_svc, "Сервис отчётов и справочников", "Python / Domain Service", "Управление справочниками (дисциплины, группы, периоды), формирование отчётов по успеваемости")
+
+    Component(integration_adapter, "Адаптер внешних интеграций", "Python / httpx / tenacity", "Синхронизация с 1С:Университет и LMS (Moodle), публикация заданий для сервисов аналитики и уведомлений")
+
+    Component(repo, "Репозитории доступа к данным", "SQLAlchemy / asyncpg", "Инкапсуляция SQL-запросов к PostgreSQL, транзакции, маппинг ORM-моделей")
+}
+
+ContainerDb(database, "Реляционная БД", "PostgreSQL 16", "Оценки, студенты, дисциплины, ведомости, рейтинги, уведомления")
+Container(analytics_service, "Сервис аналитики и рейтинга", "Python / Pandas / Celery", "Тяжёлые расчёты и отчёты")
+Container(notification_service, "Сервис подготовки уведомлений", "Python / Celery / Redis", "Очередь и подготовка уведомлений")
+System_Ext(iam, "SSO/IAM", "Внешняя система аутентификации и авторизации")
+System_Ext(university_1c, "1С:Университет", "Контингент и учебные планы")
+System_Ext(lms, "LMS (Moodle)", "Курсы и оценки")
+
+Rel(web_router, auth_mw, "Передаёт запрос на проверку прав", "in-process")
+Rel(auth_mw, iam, "Валидация токена и получение ролей", "OAuth2/HTTPS")
+
+Rel(web_router, assessment_svc, "Вызовы операций учёта оценок", "in-process")
+Rel(web_router, rating_svc, "Запросы рейтинга и групп риска", "in-process")
+Rel(web_router, report_svc, "Запросы отчётов и справочников", "in-process")
+
+Rel(assessment_svc, repo, "Чтение/запись ведомостей и оценок", "in-process")
+Rel(rating_svc, repo, "Чтение данных для расчёта рейтинга", "in-process")
+Rel(report_svc, repo, "Чтение справочников и агрегатов", "in-process")
+
+Rel(repo, database, "SQL-запросы и транзакции", "SQL/TCP 5432")
+
+Rel(assessment_svc, integration_adapter, "Запрос синхронизации контингента и оценок", "in-process")
+Rel(integration_adapter, university_1c, "Синхронизация контингента и планов", "REST/HTTPS")
+Rel(integration_adapter, lms, "Импорт оценок и материалов", "REST/HTTPS")
+
+Rel(rating_svc, analytics_service, "Запуск тяжёлых расчётов рейтинга", "gRPC/HTTP2")
+Rel(assessment_svc, notification_service, "Инициирование уведомлений о задолженностях", "gRPC/HTTP2")
+Rel(report_svc, notification_service, "Инициирование рассылки отчётов", "gRPC/HTTP2")
+
+@enduml

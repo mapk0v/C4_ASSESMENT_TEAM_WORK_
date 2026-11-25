@@ -1,0 +1,30 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+LAYOUT_WITH_LEGEND()
+title Диаграмма системного ландшафта (C4 L0) — интеграция API Gateway & Backend в ИТ-среду вуза
+
+Person(curator, "Куратор", "Просматривает успеваемость и рейтинг групп")
+Person(dean, "Диспетчер деканата", "Формирует отчёты и управляет справочниками")
+
+Enterprise_Boundary(university, "ИТ-инфраструктура университета (МГТУ СТАНКИН)") {
+    System(api_backend, "API Gateway & Backend", "Python / FastAPI. Центральный узел обработки запросов и бизнес-логики")
+    
+    System_Ext(iam, "SSO/IAM", "Единая система аутентификации и авторизации")
+    System_Ext(university_1c, "1С:Университет", "Учёт контингента и учебных планов")
+    System_Ext(analytics_service, "Сервис аналитики и рейтинга", "Тяжёлые расчёты (Python / Pandas / Celery)")
+    System_Ext(notification_service, "Сервис уведомлений", "Рассылка Email и Telegram (Python / Celery / Redis)")
+}
+
+System_Ext(lms, "LMS (Moodle)", "Внешняя образовательная платформа: курсы и оценки")
+
+Rel(curator, api_backend, "Запрашивает рейтинг и группы риска", "HTTPS/JSON")
+Rel(dean, api_backend, "Запрашивает отчёты и справочники", "HTTPS/JSON")
+
+Rel(api_backend, iam, "Проверка токена и ролей (RBAC)", "OAuth2/HTTPS")
+Rel(api_backend, university_1c, "Синхронизация контингента", "REST/HTTPS")
+Rel(api_backend, analytics_service, "Запуск тяжёлых расчётов рейтинга", "gRPC/HTTP2")
+Rel(api_backend, notification_service, "Инициирование уведомлений", "gRPC/HTTP2")
+Rel(api_backend, lms, "Импорт оценок и материалов", "REST/HTTPS")
+
+@enduml

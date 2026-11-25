@@ -1,0 +1,39 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+LAYOUT_WITH_LEGEND()
+title Dynamic — получение аналитики студента за первый модуль
+
+Person(student, "Студент", "Пользователь мобильного приложения")
+Container(mobile_app, "Мобильное приложение", "React Native / TypeScript", "Просмотр собственных оценок")
+Container(api_gateway, "API Gateway & Backend", "Python / FastAPI", "Проверка прав, запрос аналитики")
+Container_Boundary(analytics_service, "Сервис аналитики и рейтинга") {
+  Component(grpc_handler, "gRPC Handler", "Python / grpcio", "Принимает CalculateRating")
+  Component(analytics_coordinator, "Analytics Coordinator", "Python", "Оркестрирует расчет")
+  Component(analytics_repo, "Analytics Repository", "SQLAlchemy / asyncpg", "Читает результаты выбранного модуля")
+  Component(rating_calc, "Rating Calculator", "Python / Strategy", "Среднее, медиана или минимум для одного модуля")
+}
+ContainerDb(database, "Реляционная БД", "PostgreSQL 16", "Оценки студентов за два независимых модуля")
+
+Rel(student, mobile_app, "1. Выбор дисциплин и модуля 1", "UI")
+Rel(mobile_app, api_gateway, "2. Запрос аналитики; student_id, год, module=1", "HTTPS/JSON")
+Rel(api_gateway, grpc_handler, "3. CalculateRating(student_id, year, module=1, strategy)", "gRPC/HTTP2")
+Rel(grpc_handler, analytics_coordinator, "4. Запрос расчета; проверенные параметры", "in-process")
+Rel(analytics_coordinator, analytics_repo, "5. get_module_grades(student_id, year, module=1)", "Python Call")
+Rel(analytics_repo, database, "6. SELECT по студенту, году и модулю", "SQL/TCP 5432")
+Rel(database, analytics_repo, "7. Результаты дисциплин только за модуль 1", "SQL Result")
+Rel(analytics_repo, analytics_coordinator, "8. Список ModuleGrade", "in-process")
+Rel(analytics_coordinator, rating_calc, "9. calculate_rating(..., module=1, grades)", "Python Call")
+Rel(rating_calc, analytics_coordinator, "10. RatingSummary; число несданных", "in-process")
+Rel(analytics_coordinator, grpc_handler, "11. Результат расчета", "in-process")
+Rel(grpc_handler, api_gateway, "12. CalculateRatingResponse", "gRPC/HTTP2")
+Rel(api_gateway, mobile_app, "13. Отображаемый аналитический показатель", "HTTPS/JSON")
+
+note right of rating_calc
+  Баллы: 0..54 по каждой дисциплине.
+  0..24 — не сдал, 25..34 — удовлетворительно,
+  35..44 — хорошо, 45..54 — отлично.
+  Результаты модуля 2 в расчет не включаются.
+  Агрегирующие стратегии — учебный прототип,
+  не официальная формула университета.
+end note
+@enduml

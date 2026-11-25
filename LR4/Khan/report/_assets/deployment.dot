@@ -1,0 +1,36 @@
+
+digraph Deploy {
+  graph [rankdir=TB, compound=true, pad="0.25", nodesep=0.34, ranksep=0.58, bgcolor="white", fontname="DejaVu Sans", fontsize=12];
+  node [shape=box, style="rounded,filled", fontname="DejaVu Sans", fontsize=11, color="#426681", margin="0.15,0.12"];
+  edge [fontname="DejaVu Sans", fontsize=10, color="#64748b", arrowsize=0.7];
+  mobile [label="Мобильное приложение\nReact Native", fillcolor="#e0f2fe"];
+  subgraph cluster_dc {
+   label="Проектный ЦОД / инфраструктура университета"; style="rounded,dashed"; color="#9db2c9";
+   subgraph cluster_dmz {
+     label="Публичный веб-узел (DMZ)"; color="#c5d6e8"; style=rounded;
+     nginx [label="Nginx / Web SPA\nTLS, порт 443",fillcolor="#dbeafe"];
+   }
+   subgraph cluster_app {
+     label="Приватный сервер приложений / Docker"; color="#c5d6e8"; style=rounded;
+     backend [label="Backend FastAPI\nTCP 8000",fillcolor="#eef2ff"];
+     analytics [label="Analytics / rating_calc\ngRPC 50051 + mTLS",fillcolor="#c6f6d5",penwidth=2];
+     notices [label="Notifications\ngRPC 50052 + mTLS",fillcolor="#eef2ff"];
+     {rank=same; backend; analytics; notices;}
+   }
+   subgraph cluster_data {
+     label="Приватный сегмент БД"; color="#c5d6e8"; style=rounded;
+     postgres [label="PostgreSQL 16\nTCP 5432 + TLS",shape=cylinder,fillcolor="#f1f5f9"];
+     replica [label="Реплика БД\nПЛАН / WAL",shape=cylinder,fillcolor="#fff7ed",color="#c67d3c"];
+     {rank=same; postgres; replica;}
+   }
+  }
+  mobile -> nginx [label="HTTPS 443"];
+  nginx -> backend [label="HTTP 8000"];
+  backend -> analytics [label="gRPC 50051"];
+  backend -> notices [label="gRPC 50052"];
+  analytics -> notices [label="gRPC 50052"];
+  backend -> postgres [label="SQL 5432"];
+  analytics -> postgres [label="SQL 5432"];
+  notices -> postgres [label="SQL 5432"];
+  postgres -> replica [style=dashed,label="WAL, ПЛАН"];
+}

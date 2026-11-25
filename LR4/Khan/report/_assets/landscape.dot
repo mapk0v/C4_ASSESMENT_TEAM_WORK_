@@ -1,0 +1,20 @@
+
+digraph L0 {
+  graph [rankdir=LR, pad="0.25", nodesep=0.32, ranksep=0.72, bgcolor="white", fontname="DejaVu Sans"];
+  node [shape=box, style="rounded,filled", fontname="DejaVu Sans", fontsize=12, color="#35516b", penwidth=1.2, margin="0.17,0.12"];
+  edge [fontname="DejaVu Sans", fontsize=10, color="#5b7187", arrowsize=0.7];
+  subgraph cluster_stankin {
+    label="ИТ-экосистема университета"; labelloc=t; style="rounded,dashed"; color="#6585a5"; fontname="DejaVu Sans";
+    target [label="ИС аттестации\nBackend + Analytics + Notifications", fillcolor="#dbeafe", penwidth=2];
+    onec [label="1С:Университет\nКонтингент, планы", fillcolor="#f1f5f9"];
+    moodle [label="Moodle\nРезультаты курсов", fillcolor="#f1f5f9"];
+    iam [label="SSO/IAM\nТокены, роли", fillcolor="#f1f5f9"];
+  }
+  gw [label="Шлюз уведомлений\nEmail / Telegram", fillcolor="#f8fafc"];
+  finance [label="Финансовая ИС\nСТИПЕНДИИ — ПЛАН", fillcolor="#fff7ed", color="#c67d3c"];
+  target -> onec [label="REST/HTTPS"];
+  target -> moodle [label="REST/HTTPS"];
+  target -> iam [label="OAuth2/OIDC"];
+  target -> gw [label="SMTP/HTTPS"];
+  target -> finance [style=dashed, label="ПЛАН: HTTPS"];
+}

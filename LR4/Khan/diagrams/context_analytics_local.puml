@@ -1,0 +1,25 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+LAYOUT_WITH_LEGEND()
+title L1 — локальная контекстная диаграмма для индивидуальной защиты Analytics
+
+Person(student, "Студент", "Просматривает собственные оценки за выбранный модуль")
+Person(teacher, "Преподаватель", "Вносит результаты промежуточной аттестации")
+Person(curator, "Куратор", "Анализирует успеваемость и несданные дисциплины")
+Person(dean, "Деканат", "Получает ведомости и аналитические отчеты")
+System(assessment_system, "ИС учета и анализа результатов аттестации",
+  "Backend, Analytics (rating_calc), Notifications, PostgreSQL")
+System_Ext(university_1c, "1С:Университет", "Данные студентов и планы")
+System_Ext(lms, "LMS Moodle", "Результаты оценивания")
+System_Ext(iam, "SSO/IAM", "Аутентификация и роли")
+System_Ext(notification_gateway, "Шлюз уведомлений", "SMTP / Telegram Bot API")
+
+Rel(student, assessment_system, "Запрашивает баллы по дисциплинам за модуль", "HTTPS/JSON")
+Rel(teacher, assessment_system, "Вносит оценки 0–54 за модули 1 и 2", "HTTPS/JSON")
+Rel(curator, assessment_system, "Запрашивает аналитику успеваемости", "HTTPS/JSON")
+Rel(dean, assessment_system, "Запрашивает отчеты и справочники", "HTTPS/JSON")
+Rel(assessment_system, university_1c, "Синхронизирует контингент", "REST/HTTPS")
+Rel(assessment_system, lms, "Импортирует результаты", "REST/HTTPS")
+Rel(assessment_system, iam, "Проверяет токены", "OAuth2/OIDC")
+Rel(assessment_system, notification_gateway, "Отправляет подготовленные сообщения", "SMTP / HTTPS")
+@enduml

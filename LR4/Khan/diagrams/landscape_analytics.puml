@@ -1,0 +1,29 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+LAYOUT_WITH_LEGEND()
+title L0 — ИТ-ландшафт университета и ИС промежуточной аттестации
+
+Enterprise_Boundary(stankin_it, "ИТ-экосистема МГТУ «СТАНКИН»") {
+  System(assessment_system, "ИС учета и анализа результатов аттестации",
+    "Включает Backend, Analytics (rating_calc) и Notifications; работает с результатами двух независимых модулей")
+  System(university_1c, "1С:Университет", "Контингент студентов и учебные планы")
+  System(lms, "LMS Moodle", "Результаты обучения и сведения о дисциплинах")
+  System(iam, "SSO/IAM", "Идентификация пользователей, токены и роли")
+}
+System_Ext(notification_gateway, "Шлюз Email и Telegram", "Внешняя доставка уведомлений")
+System_Ext(finance_scholarship, "Финансовая ИС / стипендии (план)",
+  "Проектная возможность передачи сводных результатов; не реализована и не входит в исходные L1–L3")
+
+Rel(assessment_system, university_1c, "Синхронизация контингента и учебных планов", "REST/HTTPS")
+Rel(assessment_system, lms, "Импорт результатов оценивания", "REST/HTTPS")
+Rel(assessment_system, iam, "Проверка токенов и ролей", "OAuth2/OIDC через HTTPS")
+Rel(assessment_system, notification_gateway, "Передача готовых уведомлений", "SMTP/TLS или HTTPS API")
+Rel(assessment_system, finance_scholarship, "ПЛАН: экспорт утвержденных итогов аттестации для стипендий", "HTTPS/REST")
+note right of finance_scholarship
+  Добавлено как ВОЗМОЖНОЕ расширение
+  ради формального требования методички
+  о финансовой системе. Требует
+  согласования с преподавателем.
+  В действующих L1–L3 связи нет.
+end note
+@enduml

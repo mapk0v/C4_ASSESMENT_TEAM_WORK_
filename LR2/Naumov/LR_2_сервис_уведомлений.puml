@@ -1,0 +1,32 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+LAYOUT_WITH_LEGEND()
+
+title Диаграмма компонентов (C4 L3) — контейнер "Сервис подготовки уведомлений" ИС учёта и анализа результатов промежуточной аттестации
+
+Container_Boundary(notifications, "Сервис подготовки уведомлений (Python / Celery / Redis)") {
+    Component(grpc_handler, "Обработчик событий (gRPC)", "grpcio / Pydantic", "Принимает события от API Gateway (новая оценка, попадание в группу риска, изменение рейтинга), валидирует параметры и передаёт на обработку")
+    Component(notification_router, "Маршрутизатор уведомлений", "Python", "Определяет тип уведомления, получателей и каналы доставки с учётом настроек получателей, исключает дубликаты")
+    Component(message_builder, "Формирователь сообщений", "Python / Jinja2", "Формирует текст уведомления по шаблону для выбранного канала (Email, Telegram)")
+    Component(delivery_dispatcher, "Диспетчер доставки Celery", "Celery", "Ведёт очередь уведомлений, расставляет приоритеты, управляет ретраями и таймаутами, маршрутизирует задачи по каналам")
+    Component(email_sender, "Отправитель Email", "aiosmtplib", "Формирует письмо и передаёт его во внешний шлюз по SMTP")
+    Component(telegram_sender, "Отправитель Telegram", "httpx", "Передаёт сообщение во внешний шлюз через Telegram Bot API")
+    Component(notification_repo, "Репозиторий уведомлений", "SQLAlchemy / asyncpg", "Чтение получателей, настроек каналов и данных для шаблонов; запись уведомлений и статусов доставки")
+}
+
+ContainerDb(database, "Реляционная БД", "PostgreSQL 16", "Оценки, студенты, дисциплины, ведомости, рейтинги, уведомления")
+Container(api_backend, "API Gateway & Backend", "Python / FastAPI", "Инициирует отправку уведомлений")
+System_Ext(delivery_gateway, "Внешний шлюз уведомлений", "SMTP-сервер и Telegram Bot API. Физическая доставка сообщений получателям")
+
+Rel(api_backend, grpc_handler, "Передача событий для уведомлений", "gRPC/HTTP2")
+Rel(grpc_handler, notification_router, "Передача валидированного события", "in-process")
+Rel(notification_router, notification_repo, "Чтение получателей и настроек каналов", "in-process")
+Rel(notification_router, message_builder, "Запрос формирования текста", "in-process")
+Rel(notification_router, delivery_dispatcher, "Постановка задач отправки в очередь", "in-process")
+Rel(delivery_dispatcher, email_sender, "Вызов отправки по Email", "in-process")
+Rel(delivery_dispatcher, telegram_sender, "Вызов отправки в Telegram", "in-process")
+Rel(delivery_dispatcher, notification_repo, "Запись статусов доставки", "in-process")
+Rel(email_sender, delivery_gateway, "Отправка Email", "SMTP")
+Rel(telegram_sender, delivery_gateway, "Отправка Telegram-сообщений", "HTTPS API")
+Rel(notification_repo, database, "SQL-запросы и транзакции", "SQL/TCP 5432")
+@enduml

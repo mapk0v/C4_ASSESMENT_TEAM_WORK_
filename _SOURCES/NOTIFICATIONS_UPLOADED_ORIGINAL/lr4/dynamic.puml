@@ -1,0 +1,29 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+title Динамическая диаграмма — Публикация оценки и уведомление студента
+
+Container(api_gateway, "API Gateway & Backend", "Python / FastAPI", "Публикует результат аттестации")
+
+Container_Boundary(notification_service, "Сервис подготовки уведомлений (Python / Celery / Redis)") {
+  Component(grpc_handler, "Обработчик событий (gRPC)", "grpcio / Pydantic", "Принимает и валидирует событие")
+  Component(notification_router, "Маршрутизатор уведомлений", "Python", "Получатели, каналы, дедупликация")
+  Component(notification_repo, "Репозиторий уведомлений", "SQLAlchemy / asyncpg", "Доступ к данным и статусам")
+  Component(message_builder, "Формирователь сообщений", "Python / Jinja2", "Шаблон + стратегия канала")
+  Component(delivery_dispatcher, "Диспетчер доставки Celery", "Celery / Redis", "Очередь, ретраи, таймауты")
+  Component(email_sender, "Отправитель Email", "aiosmtplib", "Формирует и отправляет письмо")
+}
+
+ContainerDb(database, "Реляционная БД", "PostgreSQL 16", "Получатели, уведомления, статусы")
+System_Ext(notification_gateway, "Внешний шлюз уведомлений", "SMTP / Telegram Bot API")
+
+Rel(api_gateway, grpc_handler, "1. Событие NewGradePublished", "gRPC/HTTP2")
+Rel(grpc_handler, notification_router, "2. handle_event(event)", "Python Call")
+Rel(notification_router, notification_repo, "3. get_recipients(student_id)", "Python Call")
+Rel(notification_repo, database, "4. SELECT получателей и настроек каналов", "SQL/TCP 5432")
+Rel(notification_router, message_builder, "5. build(event, recipient)", "Python Call")
+Rel(notification_router, delivery_dispatcher, "6. enqueue(message, priority)", "Python Call / Redis")
+Rel(delivery_dispatcher, email_sender, "7. send(message)", "Python Call")
+Rel(email_sender, notification_gateway, "8. Передача письма", "SMTP/TLS 587")
+Rel(delivery_dispatcher, notification_repo, "9. save_status(DELIVERED)", "Python Call")
+Rel(notification_repo, database, "10. UPDATE статуса доставки", "SQL/TCP 5432")
+@enduml

@@ -1,0 +1,59 @@
+@startuml
+!include <C4/C4_Deployment>
+
+LAYOUT_WITH_LEGEND()
+title ЛР4 — Deployment L2: размещение сервиса Analytics/SAaR
+
+' Проектная топология, а не подтвержденная инфраструктура университета.
+' Два экземпляра Backend соответствуют LR4_Markov_Deployment.puml.
+Deployment_Node(curator_pc, "Компьютер куратора", "Браузер") {
+    Container(web_app, "Веб-приложение", "React / TypeScript", "Интерфейс просмотра рейтингов")
+}
+
+Deployment_Node(cloud, "Проектный ЦОД", "Виртуальная инфраструктура / приватные сети") {
+    Deployment_Node(front_host, "Публичный веб-узел / DMZ", "Linux VM") {
+        Container(nginx, "Reverse Proxy", "Nginx", "HTTPS и балансировка Backend")
+    }
+    Deployment_Node(backend_host_1, "Сервер приложений 1", "Linux / Docker") {
+        Container(backend_1, "API Gateway — экземпляр 1", "FastAPI", "Первый экземпляр Backend")
+    }
+    Deployment_Node(backend_host_2, "Сервер приложений 2", "Linux / Docker") {
+        Container(backend_2, "API Gateway — экземпляр 2", "FastAPI", "Второй экземпляр Backend")
+    }
+    Deployment_Node(analytics_host, "Узел аналитики", "Linux / Docker") {
+        Container(analytics_api, "Analytics — gRPC API", "Python / grpcio", "Обработчик grpc_handler и выдача результатов")
+        Container(analytics_worker, "Analytics — Celery Worker", "Python / Celery / Pandas", "task_dispatcher, rating_calc, analytics_repo")
+    }
+    Deployment_Node(broker_host, "Приватный брокер задач", "Linux / Docker") {
+        Container(redis_broker, "Очередь и результаты задач", "Redis / Celery Broker", "Фоновые задачи рейтинга и их статусы")
+    }
+    Deployment_Node(notification_host, "Узел уведомлений", "Linux / Docker") {
+        Container(notification_service, "Сервис подготовки уведомлений", "Python / Celery / Redis", "Подготовка и постановка уведомлений")
+    }
+    Deployment_Node(db_host, "Приватный сервер данных", "PostgreSQL VM") {
+        ContainerDb(database, "Реляционная БД", "PostgreSQL 16", "Оценки, рейтинги, ведомости")
+    }
+    Deployment_Node(replica_host, "Резервный сервер БД (ПЛАН)", "PostgreSQL VM") {
+        ContainerDb(db_replica, "Резервная копия БД", "PostgreSQL 16", "Планируемая потоковая реплика")
+    }
+}
+
+System_Ext(notification_gateway, "Внешний шлюз уведомлений", "SMTP и Telegram Bot API")
+
+Rel(web_app, nginx, "Запросы пользователей", "HTTPS/TLS 1.3, TCP 443")
+Rel(nginx, backend_1, "Балансировка 50%", "HTTP/JSON, TCP 8000, приватно")
+Rel(nginx, backend_2, "Балансировка 50%", "HTTP/JSON, TCP 8000, приватно")
+Rel(backend_1, analytics_api, "Создать задачу / прочитать результат", "gRPC/HTTP2+mTLS, TCP 50051")
+Rel(backend_2, analytics_api, "Создать задачу / прочитать результат", "gRPC/HTTP2+mTLS, TCP 50051")
+Rel(analytics_api, redis_broker, "Публикация Celery-задач, чтение статусов", "Redis/TLS, TCP 6379")
+Rel(analytics_worker, redis_broker, "Получение заданий и запись результатов", "Redis/TLS, TCP 6379")
+Rel(analytics_worker, database, "Чтение оценок и сохранение рейтинга", "PostgreSQL/TLS, TCP 5432")
+Rel(backend_1, database, "Учётные операции", "PostgreSQL/TLS, TCP 5432")
+Rel(backend_2, database, "Учётные операции", "PostgreSQL/TLS, TCP 5432")
+Rel(backend_1, notification_service, "Инициировать уведомления", "gRPC/HTTP2+mTLS, TCP 50052")
+Rel(notification_service, notification_gateway, "Передать готовые сообщения", "SMTP/TLS 587; HTTPS 443")
+Rel(database, db_replica, "ПЛАН: репликация WAL", "PostgreSQL/TLS, TCP 5432")
+
+' Analytics API и Celery Worker — две роли ОДНОГО контейнера analytics_service
+' из ЛР1, а не новые бизнес-сервисы. Redis — техническая инфраструктура Celery.
+@enduml

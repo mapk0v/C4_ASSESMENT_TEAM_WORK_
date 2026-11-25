@@ -1,0 +1,33 @@
+@startuml
+' C4 Level 0: только ИС целиком, без внутренних сервисов.
+!define RELATIVE_INCLUDE
+!include ../vendor/C4-PlantUML/C4_Context.puml
+
+LAYOUT_TOP_DOWN()
+title Level 0 — ИС промежуточной аттестации в ИТ-среде МГТУ «СТАНКИН»
+
+Person(teacher, "Преподаватель", "Вносит баллы по дисциплинам и модулям")
+Person(curator, "Куратор", "Просматривает успеваемость и получает сообщения о группе риска")
+Person(dean, "Деканат", "Ведёт справочники и отчётность")
+Person(student, "Студент", "Просматривает оценки и получает уведомления")
+
+Enterprise_Boundary(university, "ИТ-инфраструктура МГТУ «СТАНКИН»") {
+    System(assessment_system, "ИС учёта и анализа промежуточной аттестации", "Учёт оценок 0–54 за независимые модули, аналитика и подготовка уведомлений")
+    System_Ext(iam, "SSO/IAM", "Единый вход и роли")
+    System_Ext(university_1c, "1С:Университет", "Контингент и учебные планы")
+}
+
+System_Ext(lms, "LMS (Moodle)", "Курсы и импортируемые оценки")
+System_Ext(notification_gateway, "Внешние каналы доставки", "SMTP-сервер и Telegram Bot API")
+
+Rel(teacher, assessment_system, "Вносит оценки за модуль", "HTTPS")
+Rel(curator, assessment_system, "Запрашивает аналитику", "HTTPS")
+Rel(dean, assessment_system, "Работает с отчётами", "HTTPS")
+Rel(student, assessment_system, "Смотрит оценки и рейтинг", "HTTPS")
+Rel(assessment_system, iam, "Проверяет вход и роли", "OAuth2/HTTPS")
+Rel(assessment_system, university_1c, "Синхронизирует контингент", "REST/HTTPS")
+Rel(assessment_system, lms, "Импортирует курсы и оценки", "REST/HTTPS")
+Rel(assessment_system, notification_gateway, "Передаёт Email и Telegram через внутренний сервис", "SMTP/HTTPS")
+Rel(notification_gateway, student, "Доставляет уведомления", "Email / Telegram")
+Rel(notification_gateway, curator, "Доставляет оповещения о риске", "Email / Telegram")
+@enduml
