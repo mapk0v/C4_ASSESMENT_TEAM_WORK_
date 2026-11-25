@@ -1,10 +1,10 @@
 @startuml
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+!include ../../LR4/vendor/C4-PlantUML/C4_Component.puml
 
 LAYOUT_WITH_LEGEND()
 title Диаграмма компонентов (C4 L3) — контейнер "API Gateway & Backend" ИС учёта и анализа результатов промежуточной аттестации
 
-Container_Boundary(api, "API Gateway & Backend (Python / FastAPI)") {
+Container_Boundary(api_gateway, "API Gateway & Backend (Python / FastAPI)") {
 
     Component(auth_mw, "Компонент аутентификации и авторизации", "FastAPI Middleware / python-jose", "Валидация JWT-токена от SSO/IAM, извлечение ролей, проверка прав доступа к эндпоинтам (RBAC)")
 

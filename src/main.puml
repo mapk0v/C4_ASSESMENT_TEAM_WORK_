@@ -1,0 +1,43 @@
+@startuml
+!include ../LR4/vendor/C4-PlantUML/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+title Сводная C4 L2 — ИС учёта и анализа результатов промежуточной аттестации
+
+Person(student, "Студент", "Смотрит оценки по модулю и уведомления")
+Person(teacher, "Преподаватель", "Вносит результаты аттестации")
+Person(curator, "Куратор", "Анализирует успеваемость группы")
+Person(dean, "Деканат", "Формирует отчёты и ведёт справочники")
+
+System_Ext(iam, "SSO/IAM", "Аутентификация и роли")
+System_Ext(university_1c, "1С:Университет", "Контингент и учебные планы")
+System_Ext(lms, "LMS Moodle", "Данные образовательных курсов")
+System_Ext(notification_gateway, "Внешний шлюз уведомлений", "SMTP и Telegram Bot API")
+
+System_Boundary(assessment_system, "ИС промежуточной аттестации") {
+    Container(mobile_app, "Мобильное приложение", "React Native", "Личные оценки и уведомления")
+    Container(web_app, "Веб-приложение", "React", "Ведомости, аналитика и отчёты")
+    Container(api_gateway, "API Gateway & Backend", "Python / FastAPI", "Бизнес-логика, API и права доступа — Markov")
+    Container(analytics_service, "Сервис аналитики и рейтинга", "Python / Celery", "Расчёт рейтинга и групп риска — Khan")
+    Container(notification_service, "Сервис уведомлений", "Python / Celery", "Подготовка Email и Telegram — Naumov")
+    ContainerDb(database, "База данных", "PostgreSQL", "Студенты, дисциплины, баллы 0–54 и результаты модулей")
+}
+
+Rel(student, mobile_app, "Просматривает результаты", "HTTPS")
+Rel(teacher, web_app, "Вносит оценки", "HTTPS")
+Rel(curator, web_app, "Запрашивает аналитику", "HTTPS")
+Rel(dean, web_app, "Работает с отчётами", "HTTPS")
+Rel(mobile_app, api_gateway, "Запросы студента", "HTTPS/JSON")
+Rel(web_app, api_gateway, "Работа с ведомостями и отчётами", "HTTPS/JSON")
+Rel(api_gateway, database, "Сохранение оценок по отдельным модулям", "SQL/TCP 5432")
+Rel(api_gateway, analytics_service, "Запуск расчёта рейтинга", "gRPC/HTTP2")
+Rel(analytics_service, database, "Чтение оценок за выбранный модуль", "SQL/TCP 5432")
+Rel(api_gateway, notification_service, "События аттестации", "gRPC/HTTP2")
+Rel(analytics_service, notification_service, "События о группе риска", "gRPC/HTTP2")
+Rel(notification_service, database, "Данные получателей", "SQL/TCP 5432")
+Rel(notification_service, notification_gateway, "Отправка сообщений", "SMTP/HTTPS")
+Rel(api_gateway, iam, "Проверка доступа", "OAuth2/HTTPS")
+Rel(api_gateway, university_1c, "Синхронизация контингента", "REST/HTTPS")
+Rel(api_gateway, lms, "Импорт результатов", "REST/HTTPS")
+
+@enduml

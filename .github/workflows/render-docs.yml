@@ -1,0 +1,52 @@
+name: C4 - validate and render diagrams
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate-and-render:
+    name: Validate PlantUML and build PNG/SVG
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Install Graphviz
+        run: sudo apt-get update && sudo apt-get install -y graphviz
+
+      - name: Download and verify PlantUML
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -fLsS --retry 3 \
+            https://github.com/plantuml/plantuml/releases/download/v1.2025.10/plantuml-1.2025.10.jar \
+            -o plantuml.jar
+          echo '4a01ea09b317180fb8e7eef712dfdca725409d2ee1919e4b5adfe9d8362b6fe5  plantuml.jar' | sha256sum -c -
+
+      - name: Validate and render C4 diagrams
+        shell: bash
+        run: bash scripts/render-diagrams.sh "$GITHUB_WORKSPACE/plantuml.jar"
+
+      - name: Upload PNG and SVG artifacts
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: c4-architecture-diagrams
+          path: docs/images/
+          if-no-files-found: error
+          retention-days: 30

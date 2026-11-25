@@ -1,5 +1,5 @@
 @startuml
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Deployment.puml
+!include ../vendor/C4-PlantUML/C4_Deployment.puml
 
 LAYOUT_WITH_LEGEND()
 title Диаграмма развертывания (C4 L2) — инфраструктура API Gateway & Backend
