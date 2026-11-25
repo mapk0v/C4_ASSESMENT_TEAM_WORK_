@@ -1,18 +1,16 @@
 @startuml
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+!include ../../vendor/C4-PlantUML/C4_Context.puml
 LAYOUT_WITH_LEGEND()
 title L0 — ИТ-ландшафт университета и ИС промежуточной аттестации
 
 Enterprise_Boundary(stankin_it, "ИТ-экосистема МГТУ «СТАНКИН»") {
-  System(assessment_system, "ИС учета и анализа результатов аттестации",
-    "Включает Backend, Analytics (rating_calc) и Notifications; работает с результатами двух независимых модулей")
+  System(assessment_system, "ИС учета и анализа результатов аттестации", "Включает Backend, Analytics (rating_calc) и Notifications; работает с результатами двух независимых модулей")
   System(university_1c, "1С:Университет", "Контингент студентов и учебные планы")
   System(lms, "LMS Moodle", "Результаты обучения и сведения о дисциплинах")
   System(iam, "SSO/IAM", "Идентификация пользователей, токены и роли")
 }
 System_Ext(notification_gateway, "Шлюз Email и Telegram", "Внешняя доставка уведомлений")
-System_Ext(finance_scholarship, "Финансовая ИС / стипендии (план)",
-  "Проектная возможность передачи сводных результатов; не реализована и не входит в исходные L1–L3")
+System_Ext(finance_scholarship, "Финансовая ИС / стипендии (план)", "Проектная возможность передачи сводных результатов; не реализована и не входит в исходные L1–L3")
 
 Rel(assessment_system, university_1c, "Синхронизация контингента и учебных планов", "REST/HTTPS")
 Rel(assessment_system, lms, "Импорт результатов оценивания", "REST/HTTPS")

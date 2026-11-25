@@ -1,10 +1,10 @@
 @startuml
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+!include ../../LR4/vendor/C4-PlantUML/C4_Component.puml
 
 LAYOUT_WITH_LEGEND()
 title Диаграмма компонентов (C4 L3) — контейнер "Сервис аналитики и рейтинга" ИС учёта и анализа результатов промежуточной аттестации
 
-Container_Boundary(analytics, "Сервис аналитики и рейтинга (Python / Pandas / Celery)") {
+Container_Boundary(analytics_service, "Сервис аналитики и рейтинга (Python / Pandas / Celery)") {
 
     Component(grpc_handler, "Обработчик заданий (gRPC)", "grpcio / Pydantic", "Принимает задания от API Gateway, валидирует параметры, ставит задачу в очередь Celery и возвращает task_id; отдаёт готовые результаты")
 

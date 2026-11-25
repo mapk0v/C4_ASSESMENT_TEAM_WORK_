@@ -1,11 +1,11 @@
 @startuml
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Component.puml
+!include ../../LR4/vendor/C4-PlantUML/C4_Component.puml
 LAYOUT_WITH_LEGEND()
 
 title Диаграмма компонентов (C4 L3) — контейнер "Сервис подготовки уведомлений" ИС учёта и анализа результатов промежуточной аттестации
 
-Container_Boundary(notifications, "Сервис подготовки уведомлений (Python / Celery / Redis)") {
-    Component(grpc_handler, "Обработчик событий (gRPC)", "grpcio / Pydantic", "Принимает события от API Gateway (новая оценка, попадание в группу риска, изменение рейтинга), валидирует параметры и передаёт на обработку")
+Container_Boundary(notification_service, "Сервис подготовки уведомлений (Python / Celery / Redis)") {
+    Component(grpc_handler, "Обработчик событий (gRPC)", "grpcio / Pydantic", "Принимает события от API Gateway и Analytics (новая оценка, попадание в группу риска, изменение рейтинга), валидирует параметры и передаёт на обработку")
     Component(notification_router, "Маршрутизатор уведомлений", "Python", "Определяет тип уведомления, получателей и каналы доставки с учётом настроек получателей, исключает дубликаты")
     Component(message_builder, "Формирователь сообщений", "Python / Jinja2", "Формирует текст уведомления по шаблону для выбранного канала (Email, Telegram)")
     Component(delivery_dispatcher, "Диспетчер доставки Celery", "Celery", "Ведёт очередь уведомлений, расставляет приоритеты, управляет ретраями и таймаутами, маршрутизирует задачи по каналам")
@@ -15,10 +15,12 @@ Container_Boundary(notifications, "Сервис подготовки уведо�
 }
 
 ContainerDb(database, "Реляционная БД", "PostgreSQL 16", "Оценки, студенты, дисциплины, ведомости, рейтинги, уведомления")
-Container(api_backend, "API Gateway & Backend", "Python / FastAPI", "Инициирует отправку уведомлений")
-System_Ext(delivery_gateway, "Внешний шлюз уведомлений", "SMTP-сервер и Telegram Bot API. Физическая доставка сообщений получателям")
+Container(api_gateway, "API Gateway & Backend", "Python / FastAPI", "Инициирует отправку уведомлений")
+Container(analytics_service, "Сервис аналитики и рейтинга", "Python / Pandas / Celery", "Передаёт события о группах риска")
+System_Ext(notification_gateway, "Внешний шлюз уведомлений", "SMTP-сервер и Telegram Bot API. Физическая доставка сообщений получателям")
 
-Rel(api_backend, grpc_handler, "Передача событий для уведомлений", "gRPC/HTTP2")
+Rel(api_gateway, grpc_handler, "Передача событий для уведомлений", "gRPC/HTTP2")
+Rel(analytics_service, grpc_handler, "События о выявленных группах риска", "gRPC/HTTP2")
 Rel(grpc_handler, notification_router, "Передача валидированного события", "in-process")
 Rel(notification_router, notification_repo, "Чтение получателей и настроек каналов", "in-process")
 Rel(notification_router, message_builder, "Запрос формирования текста", "in-process")
@@ -26,7 +28,7 @@ Rel(notification_router, delivery_dispatcher, "Постановка задач �
 Rel(delivery_dispatcher, email_sender, "Вызов отправки по Email", "in-process")
 Rel(delivery_dispatcher, telegram_sender, "Вызов отправки в Telegram", "in-process")
 Rel(delivery_dispatcher, notification_repo, "Запись статусов доставки", "in-process")
-Rel(email_sender, delivery_gateway, "Отправка Email", "SMTP")
-Rel(telegram_sender, delivery_gateway, "Отправка Telegram-сообщений", "HTTPS API")
+Rel(email_sender, notification_gateway, "Отправка Email", "SMTP")
+Rel(telegram_sender, notification_gateway, "Отправка Telegram-сообщений", "HTTPS API")
 Rel(notification_repo, database, "SQL-запросы и транзакции", "SQL/TCP 5432")
 @enduml

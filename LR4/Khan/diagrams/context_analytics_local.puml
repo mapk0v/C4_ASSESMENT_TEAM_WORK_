@@ -1,5 +1,5 @@
 @startuml
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+!include ../../vendor/C4-PlantUML/C4_Context.puml
 LAYOUT_WITH_LEGEND()
 title L1 — локальная контекстная диаграмма для индивидуальной защиты Analytics
 
@@ -7,8 +7,7 @@ Person(student, "Студент", "Просматривает собственн
 Person(teacher, "Преподаватель", "Вносит результаты промежуточной аттестации")
 Person(curator, "Куратор", "Анализирует успеваемость и несданные дисциплины")
 Person(dean, "Деканат", "Получает ведомости и аналитические отчеты")
-System(assessment_system, "ИС учета и анализа результатов аттестации",
-  "Backend, Analytics (rating_calc), Notifications, PostgreSQL")
+System(assessment_system, "ИС учета и анализа результатов аттестации", "Backend, Analytics (rating_calc), Notifications, PostgreSQL")
 System_Ext(university_1c, "1С:Университет", "Данные студентов и планы")
 System_Ext(lms, "LMS Moodle", "Результаты оценивания")
 System_Ext(iam, "SSO/IAM", "Аутентификация и роли")
