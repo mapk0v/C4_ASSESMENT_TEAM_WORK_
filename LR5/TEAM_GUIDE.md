@@ -40,12 +40,3 @@ git push -u origin feature/khan-lr5-analytics
 
 Условие: скрипт, библиотека и workflow должны предварительно находиться в ветке проекта. Если тимлид сначала подготовит инфраструктуру в отдельном PR, у каждого участника после обновления ветки будут те же средства проверки.
 
-## Скриншоты для защиты (сделать после загрузки на GitHub)
-
-1. Структура `LR1`–`LR5` и `.github/workflows/render-docs.yml`.
-2. Открытый PR `feature/khan-lr5-analytics → main`.
-3. Зелёная галочка `Validate PlantUML and build PNG/SVG`.
-4. Лог с `SUCCESS: validated ... diagrams; generated ... PNG and ... SVG files`.
-5. Содержимое артефакта `c4-architecture-diagrams` и сводная диаграмма `src/main.png`.
-
-**Не изображать локальные логи как результаты GitHub Actions.** После запуска онлайн нужно вставить реальные скриншоты.
